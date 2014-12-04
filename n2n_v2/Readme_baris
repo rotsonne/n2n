@@ -1,0 +1,22 @@
+1) Firstly, we need to compile libancillary files with :
+	make -f Makefile_2
+
+
+2) Secondly, we need to compile test.c with:
+	make test -f Makefile_2
+
+
+3) Finally we need to make n2n with: (it is just make, it uses Makefile)
+	make
+   
+
+Now we can run sudo ./test and ./edge with right parameters:
+#sudo ./test
+#sudo ./edge -c community -d community  -k secret -r -l 54.174.101.52:1234 -r -a 10.11.12.13 (mine parameters)
+
+
+
+in original n2n project just make and run:
+#sudo ./edge2 -c community2 -d community2  -k secret -r -l 54.174.101.52:1234 -r -a 10.11.12.14 (mine parameters)
+
+
