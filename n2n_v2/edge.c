@@ -28,6 +28,7 @@
 #include <assert.h>
 #include <sys/stat.h>
 #include "minilzo.h"
+#include "ancillary.h"
 
 #if defined(DEBUG)
 #define SOCKET_TIMEOUT_INTERVAL_SECS    5
@@ -140,6 +141,30 @@ static void supernode2addr(n2n_sock_t * sn, const n2n_sn_name_t addr);
 
 static void send_packet2net(n2n_edge_t * eee,
 			    uint8_t *decrypted_msg, size_t len);
+
+
+
+static void read_mac(char *ifname, n2n_mac_t mac_addr) {
+  int _sock, res;
+  struct ifreq ifr;
+  macstr_t mac_addr_buf;
+
+  memset (&ifr,0,sizeof(struct ifreq));
+
+  /* Dummy socket, just to make ioctls with */
+  _sock=socket(PF_INET, SOCK_DGRAM, 0);
+  strcpy(ifr.ifr_name, ifname);
+  res = ioctl(_sock,SIOCGIFHWADDR,&ifr);
+  if (res<0) {
+    perror ("Get hw addr");
+  } else
+    memcpy(mac_addr, ifr.ifr_ifru.ifru_hwaddr.sa_data, 6);
+
+  traceEvent(TRACE_NORMAL, "Interface %s has MAC %s",
+	     ifname,
+	     macaddr_str(mac_addr_buf, mac_addr ));
+  close(_sock);
+}
 
 
 /* ************************************** */
@@ -1928,6 +1953,8 @@ static int run_loop(n2n_edge_t * eee );
 /** Entry point to program from kernel. */
 int main(int argc, char* argv[])
 {
+	printf("asdasdasd\n");
+	fflush(stdout);
     int     opt;
     int     local_port = 0 /* any port */;
     int     mgmt_port = N2N_EDGE_MGMT_PORT; /* 5644 by default */
@@ -1981,7 +2008,8 @@ int main(int argc, char* argv[])
     for(i=0; i < (int)strlen(linebuffer); i++)
         if(linebuffer[i] == '\\') linebuffer[i] = '/';
 #endif
-
+    printf("test baslar...1\n");
+    fflush(stdout);
     for(i=1;i<argc;++i)
     {
         if(argv[i][0] == '@')
@@ -2003,6 +2031,8 @@ int main(int argc, char* argv[])
     while(strlen(linebuffer) && linebuffer[strlen(linebuffer)-1]==' ')
         linebuffer[strlen(linebuffer)-1]= '\0';
 
+    printf("test baslar...2\n");
+    fflush(stdout);
     /* build the new argv from the linebuffer */
     effectiveargv = buildargv(&effectiveargc, linebuffer);
 
@@ -2011,7 +2041,8 @@ int main(int argc, char* argv[])
         free(linebuffer);
         linebuffer = NULL;
     }
-
+    printf("test baslar...3\n");
+    fflush(stdout);
     /* {int k;for(k=0;k<effectiveargc;++k)  printf("%s\n",effectiveargv[k]);} */
 
     optarg = NULL;
@@ -2175,7 +2206,8 @@ int main(int argc, char* argv[])
         } /* end switch */
     }
 
-
+    printf("test baslar...4\n");
+    fflush(stdout);
 #ifdef N2N_HAVE_DAEMON
     if ( eee.daemon )
     {
@@ -2207,7 +2239,8 @@ int main(int argc, char* argv[])
     free( effectiveargv );
     effectiveargv = 0;
     effectiveargc = 0;
-
+    printf("test baslar...5\n");
+    fflush(stdout);
     if(!(
 #ifdef __linux__
            (tuntap_dev_name[0] != 0) &&
@@ -2232,7 +2265,8 @@ int main(int argc, char* argv[])
     setuid( 0 );
     /* setgid( 0 ); */
 #endif
-
+    printf("test baslar...6\n");
+    fflush(stdout);
     if ( 0 == strcmp( "dhcp", ip_mode ) )
     {
         traceEvent(TRACE_NORMAL, "Dynamic IP address assignment enabled.");
@@ -2244,8 +2278,35 @@ int main(int argc, char* argv[])
         traceEvent(TRACE_NORMAL, "ip_mode='%s'", ip_mode);        
     }
 
-    if(tuntap_open(&(eee.device), tuntap_dev_name, ip_mode, ip_addr, netmask, device_mac, mtu) < 0)
-        return(-1);
+    int fd_sock;
+    if ( (fd_sock = socket(AF_UNIX, SOCK_STREAM, 0)) == -1) {
+           perror("socket error");
+           exit(-1);
+    }
+
+    int recv_fd;
+    if(!ancil_recv_fd(fd_sock, &recv_fd))
+    {
+        traceEvent(TRACE_NORMAL, "OK fd is = %d", recv_fd);
+    }
+    else
+    {
+    	traceEvent(TRACE_NORMAL, "ERROR fd is =%d", recv_fd);
+    }
+
+    strncpy((eee.device).dev_name, tuntap_dev_name, MIN(IFNAMSIZ, N2N_IFNAMSIZ) );
+
+    (eee.device).ip_addr = inet_addr(ip_addr);
+    (eee.device).device_mask = inet_addr(netmask);
+    read_mac(tuntap_dev_name, (eee.device).mac_addr);
+
+    printf("test baslar...7\n");
+    fflush(stdout);
+
+    printf("Tuntap_open parameters : %s , %s , %s , %s , %s , %d", tuntap_dev_name, ip_mode, ip_addr, netmask, device_mac, mtu);
+    fflush(stdout);
+//        if(tuntap_open(&(eee.device), tuntap_dev_name, ip_mode, ip_addr, netmask, device_mac, mtu) < 0)
+//            return(-1);
 
 #ifndef WIN32
     if ( (userid != 0) || (groupid != 0 ) ) {
